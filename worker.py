@@ -37,7 +37,7 @@ print(' [*] Waiting for messages. To exit press CTRL+C')
 
 def callback(ch, method, properties, body):
     print(" [x] Received %r" % body)
-    insta(body)
+    insta_bot(body)
     print(" [x] Done")
     ch.basic_ack(delivery_tag = method.delivery_tag)
 
