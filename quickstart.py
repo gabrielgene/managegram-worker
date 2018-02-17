@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 import pika
 from instapy import InstaPy
+import json
 
-def insta(tag):
+def insta(body):
     # set headless_browser=True if you want to run InstaPy on a server
     try:
-        insta_username = 'managerinsta97'
-        insta_password = 'insta@123'
+        data = json.loads((body).decode("utf-8"))
+        insta_username = data['user']#'managerinsta97'
+        insta_password = data['pass']#insta@123'
         # set these if you're locating the library in the /usr/lib/pythonX.X/ directory
         # Settings.database_location = '/path/to/instapy.db'
         # Settings.browser_location = '/path/to/chromedriver'
@@ -25,7 +27,10 @@ def insta(tag):
         session.set_dont_like(['pizza', 'girl'])
 
         # actions
-        session.follow_by_tags([tag], amount=1)
+        if (data['type'] == 'tag'):
+            session.follow_by_tags(data['tag'], amount=1)
+        elif (data['type'] == 'follow'):
+            session.follow_user_followers(data['profiles'], amount=2, randomize=True, sleep_delay=30)
 
     finally:
         # end the bot session
