@@ -3,7 +3,7 @@ import pika
 from instapy import InstaPy
 import json
 
-def insta(body):
+def insta_bot(body):
     # set headless_browser=True if you want to run InstaPy on a server
     try:
         data = json.loads((body).decode("utf-8"))
@@ -19,18 +19,11 @@ def insta(body):
                         multi_logs=True)
         session.login()
 
-        # settings
-        session.set_upper_follower_count(limit=2500)
-        session.set_do_comment(True, percentage=10)
-        session.set_comments(['aMEIzing!', 'So much fun!!', 'Nicey!'])
-        session.set_dont_include(['friend1', 'friend2', 'friend3'])
-        session.set_dont_like(['pizza', 'girl'])
-
         # actions
-        if (data['type'] == 'tag'):
-            session.follow_by_tags(data['tag'], amount=1)
-        elif (data['type'] == 'follow'):
-            session.follow_user_followers(data['profiles'], amount=2, randomize=True, sleep_delay=30)
+        if (data['tag']):
+            session.follow_by_tags(data['tags_list'], amount=7)
+        elif (data['follow']):
+            session.follow_user_followers(data['profiles'], amount=7, randomize=True, sleep_delay=30)
 
     finally:
         # end the bot session
