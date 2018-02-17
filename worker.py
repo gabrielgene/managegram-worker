@@ -1,29 +1,29 @@
 #!/usr/bin/env python
+# -*- coding: iso-8859-1 -*-
 import pika
 from instapy import InstaPy
 import json
 
 def insta_bot(body):
-    # set headless_browser=True if you want to run InstaPy on a server
     try:
         data = json.loads((body).decode("utf-8"))
         insta_username = data['user']#'managerinsta97'
         insta_password = data['pass']#insta@123'
-        # set these if you're locating the library in the /usr/lib/pythonX.X/ directory
-        # Settings.database_location = '/path/to/instapy.db'
-        # Settings.browser_location = '/path/to/chromedriver'
-
         session = InstaPy(username=insta_username,
-                        password=insta_password,
-                        headless_browser=True,
-                        multi_logs=True)
-        session.login()
+                    password=insta_password,
+                    headless_browser=True,
+                    multi_logs=True)
 
-        # actions
-        if (data['tag']):
-            session.follow_by_tags(data['tags_list'], amount=7)
-        elif (data['follow']):
-            session.follow_user_followers(data['profiles'], amount=7, randomize=True, sleep_delay=60)
+        if (data['status'] != 'stop'):
+            session.login()
+
+            session.set_upper_follower_count(limit=999999)
+
+            # actions
+            if (data['tag_type'] == 'enable'):
+                session.follow_by_tags(data['tag_list'], amount=1)
+            elif (data['profile_type'] == 'enable'):
+                session.follow_user_followers(data['profile_list'], amount=1, randomize=True, sleep_delay=60)
 
     finally:
         # end the bot session
