@@ -504,7 +504,7 @@ def check_link(browser,
                     'Number of followers does not reach minimum'
 
     logger.info('Link: {}'.format(link.encode('utf-8')))
-    logger.info('Description: {}'.format(image_text.encode('utf-8')))
+    # logger.info('Description: {}'.format(image_text.encode('utf-8')))
 
     """Check if the user_name is in the ignore_users list"""
     if (user_name in ignore_users) or (user_name == username):
