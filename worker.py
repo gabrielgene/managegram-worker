@@ -23,7 +23,7 @@ def insta_bot(body):
         if (data['tag']):
             session.follow_by_tags(data['tags_list'], amount=7)
         elif (data['follow']):
-            session.follow_user_followers(data['profiles'], amount=7, randomize=True, sleep_delay=30)
+            session.follow_user_followers(data['profiles'], amount=7, randomize=True, sleep_delay=60)
 
     finally:
         # end the bot session
