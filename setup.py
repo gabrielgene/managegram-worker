@@ -7,7 +7,8 @@ requirements = [
     'selenium==2.53.6',
     'clarifai==2.0.32',
     'pyvirtualdisplay',
-    'emoji'
+    'emoji',
+    'pika'
 ]
 
 description = 'Instagram Like, Comment and Follow Automation Script'
