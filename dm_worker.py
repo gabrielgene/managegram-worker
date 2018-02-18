@@ -5,21 +5,19 @@ import pika
 from instapy import InstaPy
 import json
 
-def send_to_queue(followers):
+def send_to_queue(data):
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
 
     channel.queue_declare(queue='dmlist_queue', durable=True)
 
-    message = ','.join(followers)
-
     channel.basic_publish(exchange='',
                       routing_key='dmlist_queue',
-                      body=message,
+                      body=data,
                       properties=pika.BasicProperties(
                          delivery_mode = 2, # make message persistent
                       ))
-    print(" [x] Sent %r" % message)
+    print(" [x] Sent %r" % data)
     connection.close()
 
 def insta_bot(body):
@@ -38,7 +36,8 @@ def insta_bot(body):
             # actions
             if (data['dm_type'] == 'enable'):
                 followers_list = session.list_followers([insta_username])
-                send_to_queue(followers_list)
+                data['followers_list'] = followers_list
+                send_to_queue(json.dumps(data))
 
 
     finally:
@@ -48,7 +47,7 @@ def insta_bot(body):
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='127.0.0.1'))
 channel = connection.channel()
 
-channel.queue_declare(queue='task_queue', durable=True)
+channel.queue_declare(queue='dm_queue', durable=True)
 print(' [*] Waiting for messages. To exit press CTRL+C')
 
 def callback(ch, method, properties, body):
