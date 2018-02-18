@@ -279,7 +279,7 @@ def unfollow(browser,
         try:
             following_link = browser.find_elements_by_xpath(
                 '//article//ul//li[3]')
-            
+
             click_element(browser, following_link[0]) # following_link[0].click()
             # update server calls
             update_activity()
@@ -395,7 +395,7 @@ def unfollow_user(browser, logger):
 
     if unfollow_button.text == 'Following':
         click_element(browser, unfollow_button) # unfollow_button.send_keys("\n")
-        
+
         update_activity('unfollows')
         logger.warning('--> User unfollowed due to Inappropriate Content')
         sleep(3)
@@ -577,6 +577,99 @@ def follow_through_dialog(browser,
         logger.error("follow loop error {}".format(str(e)))
 
     return person_followed
+
+
+# HEREEEE
+def list_of_followers(browser,
+                          user_name,
+                          amount,
+                          dont_include,
+                          login,
+                          follow_restrict,
+                          allfollowing,
+                          randomize,
+                          delay,
+                          blacklist,
+                          logger,
+                          logfolder,
+                          follow_times,
+                          callbacks=[]):
+    sleep(2)
+    person_followed = []
+    real_amount = amount
+    if randomize and amount >= 3:
+        # expanding the popultaion for better sampling distribution
+        amount = amount * 3
+
+    # find dialog box
+    dialog = browser.find_element_by_xpath(
+      "//div[text()='Followers' or text()='Following']/following-sibling::div")
+
+    # scroll down the page
+    scroll_bottom(browser, dialog, allfollowing)
+
+    # get follow buttons. This approch will find the follow buttons and
+    # ignore the Unfollow/Requested buttons.
+    follow_buttons = dialog.find_elements_by_xpath(
+        "//div/div/span/button[text()='Follow']")
+    follow_names = dialog.find_elements_by_xpath(
+        "//ul/div/li/div/div/div/div/a")
+    followers_list = []
+    for name in follow_names:
+        followers_list.append(name.text)
+
+    return followers_list
+
+
+def get_list_followers(browser,
+                                user_name,
+                                amount,
+                                dont_include,
+                                login,
+                                follow_restrict,
+                                random,
+                                delay,
+                                blacklist,
+                                logger,
+                                logfolder,
+                                follow_times):
+
+    browser.get('https://www.instagram.com/' + user_name)
+    # update server calls
+    update_activity()
+
+    #  check how many poeple are following this user.
+    #  throw RuntimeWarning if we are 0 people following this user
+    try:
+        allfollowing = formatNumber(
+            browser.find_element_by_xpath("//li[3]/a/span").text)
+    except NoSuchElementException:
+        logger.warning('There are 0 people to follow')
+
+    try:
+        following_link = browser.find_elements_by_xpath(
+            '//a[@href="/' + user_name + '/followers/"]')
+        click_element(browser, following_link[0]) # following_link.send_keys("\n")
+        # update server calls
+        update_activity()
+    except BaseException as e:
+        logger.error("following_link error {}".format(str(e)))
+
+    followers_list = list_of_followers(browser,
+                                           user_name,
+                                           amount,
+                                           dont_include,
+                                           login,
+                                           follow_restrict,
+                                           allfollowing,
+                                           random,
+                                           delay,
+                                           blacklist,
+                                           logger,
+                                           logfolder,
+                                           follow_times)
+
+    return followers_list
 
 
 def get_given_user_followers(browser,
