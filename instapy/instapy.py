@@ -43,7 +43,7 @@ from .unfollow_util import follow_given_user
 from .unfollow_util import load_follow_restriction
 from .unfollow_util import dump_follow_restriction
 from .unfollow_util import set_automated_followed_pool
-
+from .unfollow_util import get_list_followers
 
 # Set a logger cache outside the InstaPy object to avoid re-instantiation issues
 loggers = {}
@@ -1381,6 +1381,47 @@ class InstaPy:
                            self.user_interact_media)
 
         return self
+
+    def list_followers(self,
+                              usernames,
+                              amount=10,
+                              randomize=False,
+                              interact=False,
+                              sleep_delay=600):
+
+        userFollowed = []
+        if not isinstance(usernames, list):
+            usernames = [usernames]
+        for user in usernames:
+
+            try:
+                followers_list = get_list_followers(self.browser,
+                                                            user,
+                                                            amount,
+                                                            self.dont_include,
+                                                            self.username,
+                                                            self.follow_restrict,
+                                                            randomize,
+                                                            sleep_delay,
+                                                            self.blacklist,
+                                                            self.logger,
+                                                            self.logfolder,
+                                                            self.follow_times)
+
+            except (TypeError, RuntimeWarning) as err:
+                if isinstance(err, RuntimeWarning):
+                    self.logger.warning(
+                        u'Warning: {} , skipping to next user'.format(err))
+                    continue
+                else:
+                    self.logger.error(
+                        'Sorry, an error occured: {}'.format(err))
+                    self.aborting = True
+                    return self
+        self.logger.info(
+            "--> List followers : {} ".format(len(followers_list)))
+
+        return followers_list
 
     def follow_user_followers(self,
                               usernames,
