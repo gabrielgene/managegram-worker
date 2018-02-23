@@ -7,8 +7,8 @@ import json
 def insta_bot(body):
     try:
         data = json.loads((body).decode("utf-8"))
-        insta_username = data['user']#'managerinsta97'
-        insta_password = data['pass']#insta@123'
+        insta_username = data['user']
+        insta_password = data['pass']
         session = InstaPy(username=insta_username,
                     password=insta_password,
                     headless_browser=True,
