@@ -21,9 +21,9 @@ def insta_bot(body):
 
             # actions
             if (data['tag_type'] == 'enable'):
-                session.follow_by_tags(data['tag_list'], amount=1)
+                session.follow_by_tags(data['tag_list'], amount=8)
             elif (data['profile_type'] == 'enable'):
-                session.follow_user_followers(data['profile_list'], amount=1, randomize=True, sleep_delay=60)
+                session.follow_user_followers(data['profile_list'], amount=8, randomize=True, sleep_delay=60)
 
     finally:
         # end the bot session
@@ -33,7 +33,7 @@ connection = pika.BlockingConnection(pika.ConnectionParameters(host='127.0.0.1')
 channel = connection.channel()
 
 channel.queue_declare(queue='task_queue', durable=True)
-print(' [*] Waiting for messages. To exit press CTRL+C')
+print(' [*] Waiting for tasks messages. To exit press CTRL+C')
 
 def callback(ch, method, properties, body):
     print(" [x] Received %r" % body)

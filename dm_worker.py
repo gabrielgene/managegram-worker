@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 import pika
@@ -23,8 +22,8 @@ def send_to_queue(data):
 def insta_bot(body):
     try:
         data = json.loads((body).decode("utf-8"))
-        insta_username = data['user']#'managerinsta97'
-        insta_password = data['pass']#insta@123'
+        insta_username = data['user']
+        insta_password = data['pass']
         session = InstaPy(username=insta_username,
                     password=insta_password,
                     headless_browser=True,
@@ -48,7 +47,7 @@ connection = pika.BlockingConnection(pika.ConnectionParameters(host='127.0.0.1')
 channel = connection.channel()
 
 channel.queue_declare(queue='dm_queue', durable=True)
-print(' [*] Waiting for messages. To exit press CTRL+C')
+print(' [*] Waiting for dm messages. To exit press CTRL+C')
 
 def callback(ch, method, properties, body):
     print(" [x] Received %r" % body)
