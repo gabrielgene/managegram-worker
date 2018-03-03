@@ -22,18 +22,17 @@ def send_to_queue(data):
 def insta_bot(body):
     try:
         data = json.loads((body).decode("utf-8"))
-        insta_username = data['user']
-        insta_password = data['pass']
+        insta_username = data['insta_user']
+        insta_password = data['insta_pass']
         session = InstaPy(username=insta_username,
                     password=insta_password,
                     headless_browser=True,
                     multi_logs=True)
 
-        if (data['status'] != 'stop'):
+        if (data['service_on']):
             session.login()
 
-            # actions
-            if (data['dm_type'] == 'enable'):
+            if (data['dm_type']):
                 followers_list = session.list_followers([insta_username])
                 data['followers_list'] = followers_list
                 send_to_queue(json.dumps(data))
@@ -43,7 +42,7 @@ def insta_bot(body):
         # end the bot session
         session.end()
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='127.0.0.1'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='0.0.0.0'))
 channel = connection.channel()
 
 channel.queue_declare(queue='dm_queue', durable=True)
