@@ -7,29 +7,30 @@ import json
 def insta_bot(body):
     try:
         data = json.loads((body).decode("utf-8"))
-        insta_username = data['user']
-        insta_password = data['pass']
+        insta_username = data['insta_user']
+        insta_password = data['insta_pass']
         session = InstaPy(username=insta_username,
                     password=insta_password,
                     headless_browser=True,
                     multi_logs=True)
 
-        if (data['status'] != 'stop'):
+        if (data['service_on']):
             session.login()
 
             session.set_upper_follower_count(limit=999999)
 
             # actions
-            if (data['tag_type'] == 'enable'):
-                session.follow_by_tags(data['tag_list'], amount=8)
-            elif (data['profile_type'] == 'enable'):
-                session.follow_user_followers(data['profile_list'], amount=8, randomize=True, sleep_delay=60)
+            if (data['tag_type']):
+                session.follow_by_tags(data['tag_list'], amount=1)
+
+            if (data['profile_type']):
+                session.follow_user_followers(data['profile_list'], amount=1, randomize=True, sleep_delay=60)
 
     finally:
         # end the bot session
         session.end()
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='127.0.0.1'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='0.0.0.0'))
 channel = connection.channel()
 
 channel.queue_declare(queue='task_queue', durable=True)
