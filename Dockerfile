@@ -6,5 +6,3 @@ WORKDIR /app
 COPY . /app
 
 RUN pip install .
-
-CMD ["python", "task_worker.py"]
