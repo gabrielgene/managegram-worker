@@ -2,22 +2,24 @@
 import csv
 import json
 import logging
+import re
 from math import ceil
 import os
+from platform import python_version
 from datetime import datetime
 from sys import maxsize
 import random
 
+import selenium
 from pyvirtualdisplay import Display
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver import DesiredCapabilities
+from selenium.webdriver.common.proxy import Proxy, ProxyType
 import requests
 
-if os.name != 'nt':
-    from .clarifai_util import check_image
-from .settings import Settings
+from .clarifai_util import check_image
 from .comment_util import comment_image
 from .like_util import check_link
 from .like_util import get_links_for_tag
@@ -28,6 +30,7 @@ from .like_util import like_image
 from .like_util import get_links_for_username
 from .login_util import login_user
 from .print_log_writer import log_follower_num
+from .settings import Settings
 from .time_util import sleep
 from .time_util import set_sleep_percentage
 from .util import get_active_users
@@ -43,10 +46,14 @@ from .unfollow_util import follow_given_user
 from .unfollow_util import load_follow_restriction
 from .unfollow_util import dump_follow_restriction
 from .unfollow_util import set_automated_followed_pool
-from .unfollow_util import get_list_followers
+
 
 # Set a logger cache outside the InstaPy object to avoid re-instantiation issues
 loggers = {}
+
+
+class InstaPyError(Exception):
+    """General error for InstaPy exceptions"""
 
 
 class InstaPy:
@@ -62,6 +69,7 @@ class InstaPy:
                  show_logs=True,
                  headless_browser=False,
                  proxy_address=None,
+                 proxy_chrome_extension=None,
                  proxy_port=0,
                  bypass_suspicious_attempt=False,
                  multi_logs=False):
@@ -74,13 +82,15 @@ class InstaPy:
         self.headless_browser = headless_browser
         self.proxy_address = proxy_address
         self.proxy_port = proxy_port
+        self.proxy_chrome_extension = proxy_chrome_extension
 
         self.username = username or os.environ.get('INSTA_USER')
         self.password = password or os.environ.get('INSTA_PW')
         self.nogui = nogui
-        self.logfolder = './logs/'
+        self.logfolder = Settings.log_location + os.path.sep
         if multi_logs is True:
-            self.logfolder = './logs/{}/'.format(self.username)
+            self.logfolder = '{0}{1}{2}{1}'.format(
+                Settings.log_location, os.path.sep, self.username)
         if not os.path.exists(self.logfolder):
             os.makedirs(self.logfolder)
 
@@ -157,10 +167,10 @@ class InstaPy:
             # initialize and setup logging system for the InstaPy object
             logger = logging.getLogger(__name__)
             logger.setLevel(logging.DEBUG)
-            file_handler = logging.FileHandler( '{}general.log'.format(self.logfolder))
+            file_handler = logging.FileHandler('{}general.log'.format(self.logfolder))
             file_handler.setLevel(logging.DEBUG)
             extra = {"username": self.username}
-            logger_formatter = logging.Formatter('%(levelname)s [%(username)s]  %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+            logger_formatter = logging.Formatter('%(levelname)s [%(asctime)s] [%(username)s]  %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
             file_handler.setFormatter(logger_formatter)
             logger.addHandler(file_handler)
 
@@ -206,7 +216,7 @@ class InstaPy:
             self.browser = webdriver.Firefox(firefox_profile=firefox_profile)
 
         else:
-            chromedriver_location = Settings.browser_location
+            chromedriver_location = Settings.chromedriver_location
             chrome_options = Options()
             chrome_options.add_argument('--dns-prefetch-disable')
             chrome_options.add_argument('--no-sandbox')
@@ -221,13 +231,41 @@ class InstaPy:
                 user_agent = "Chrome"
                 chrome_options.add_argument('user-agent={user_agent}'
                                             .format(user_agent=user_agent))
+            capabilities = DesiredCapabilities.CHROME
+            # Proxy for chrome
+            if self.proxy_address and self.proxy_port > 0:
+                prox = Proxy()
+                proxy = ":".join([self.proxy_address, self.proxy_port])
+                prox.proxy_type = ProxyType.MANUAL
+                prox.http_proxy = proxy
+                prox.socks_proxy = proxy
+                prox.ssl_proxy = proxy
+                prox.add_to_capabilities(capabilities)
+
+            # add proxy extension
+            if self.proxy_chrome_extension and not self.headless_browser:
+                chrome_options.add_extension(self.proxy_chrome_extension)
 
             chrome_prefs = {
                 'intl.accept_languages': 'en-US'
             }
             chrome_options.add_experimental_option('prefs', chrome_prefs)
-            self.browser = webdriver.Chrome(chromedriver_location,
-                                            chrome_options=chrome_options)
+            try:
+                self.browser = webdriver.Chrome(chromedriver_location,
+                                                desired_capabilities=capabilities,
+                                                chrome_options=chrome_options)
+            except selenium.common.exceptions.WebDriverException as exc:
+                self.logger.exception(exc)
+                raise InstaPyError('ensure chromedriver is installed at {}'.format(
+                    Settings.chromedriver_location))
+
+            # prevent: Message: unknown error: call function result missing 'value'
+            matches = re.match(r'^(\d+\.\d+)',
+                               self.browser.capabilities['chrome']['chromedriverVersion'])
+            if float(matches.groups()[0]) < Settings.chromedriver_min_version:
+                raise InstaPyError('chromedriver {} is not supported, expects {}+'.format(
+                    float(matches.groups()[0]), Settings.chromedriver_min_version))
+
         self.browser.implicitly_wait(self.page_delay)
         self.logger.info('Session started - %s'
                          % (datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
@@ -392,10 +430,18 @@ class InstaPy:
         return self
 
     def set_use_clarifai(self, enabled=False, api_key=None, full_match=False):
-        """Defines if the clarifai img api should be used
-        Which 'project' will be used (only 5000 calls per month)"""
+        """
+        Defines if the clarifai img api should be used
+        Which 'project' will be used (only 5000 calls per month)
+
+        Raises:
+            InstaPyError if os is windows
+        """
         if self.aborting:
             return self
+
+        if os.name == 'nt':
+            raise InstaPyError('Clarifai is not supported on Windows')
 
         self.use_clarifai = enabled
 
@@ -476,6 +522,7 @@ class InstaPy:
 
             if self.follow_restrict.get(acc_to_follow, 0) < self.follow_times:
                 followed += follow_given_user(self.browser,
+                                              self.username,
                                               acc_to_follow,
                                               self.follow_restrict,
                                               self.blacklist,
@@ -961,6 +1008,7 @@ class InstaPy:
         if self.aborting:
             return self
 
+        liked_img = 0
         total_liked_img = 0
         already_liked = 0
         inap_img = 0
@@ -1158,6 +1206,9 @@ class InstaPy:
             # Reset like counter for every username
             liked_img = 0
 
+            # Will we follow this user?
+            following = random.randint(0, 100) <= self.follow_percentage
+
             for i, link in enumerate(links):
                 # Check if target has reached
                 if liked_img >= amount:
@@ -1184,8 +1235,6 @@ class InstaPy:
 
                     if not inappropriate:
 
-                        following = (
-                            random.randint(0, 100) <= self.follow_percentage)
                         if (self.do_follow and
                             username not in self.dont_include and
                             following and
@@ -1200,6 +1249,8 @@ class InstaPy:
                                 self.blacklist,
                                 self.logger,
                                 self.logfolder)
+
+                            following = False
                         else:
                             self.logger.info('--> Not following')
                             sleep(1)
@@ -1277,7 +1328,7 @@ class InstaPy:
         self.logger.info('Inappropriate: {}'.format(inap_img))
         self.logger.info('Commented: {}'.format(commented))
 
-        self.liked_img += liked_img
+        self.liked_img += total_liked_img
         self.already_liked += already_liked
         self.inap_img += inap_img
         self.commented += commented
@@ -1381,47 +1432,6 @@ class InstaPy:
                            self.user_interact_media)
 
         return self
-
-    def list_followers(self,
-                              usernames,
-                              amount=10,
-                              randomize=False,
-                              interact=False,
-                              sleep_delay=600):
-
-        userFollowed = []
-        if not isinstance(usernames, list):
-            usernames = [usernames]
-        for user in usernames:
-
-            try:
-                followers_list = get_list_followers(self.browser,
-                                                            user,
-                                                            amount,
-                                                            self.dont_include,
-                                                            self.username,
-                                                            self.follow_restrict,
-                                                            randomize,
-                                                            sleep_delay,
-                                                            self.blacklist,
-                                                            self.logger,
-                                                            self.logfolder,
-                                                            self.follow_times)
-
-            except (TypeError, RuntimeWarning) as err:
-                if isinstance(err, RuntimeWarning):
-                    self.logger.warning(
-                        u'Warning: {} , skipping to next user'.format(err))
-                    continue
-                else:
-                    self.logger.error(
-                        'Sorry, an error occured: {}'.format(err))
-                    self.aborting = True
-                    return self
-        self.logger.info(
-            "--> List followers : {} ".format(len(followers_list)))
-
-        return followers_list
 
     def follow_user_followers(self,
                               usernames,
@@ -1528,11 +1538,20 @@ class InstaPy:
                        onlyInstapyFollowed=False,
                        onlyInstapyMethod='FIFO',
                        sleep_delay=600,
-                       onlyNotFollowMe=False):
+                       onlyNotFollowMe=False,
+                       unfollow_after=None):
         """Unfollows (default) 10 users from your following list"""
-        self.automatedFollowedPool = set_automated_followed_pool(self.username,
-                                                                 self.logger,
-                                                                 self.logfolder)
+        
+        if unfollow_after is not None:
+            if not python_version().startswith(('2.7', '3')):
+                self.logger.info("`unfollow_after` argument is not available for Python versions below 2.7")
+                unfollow_after = None
+        
+        if onlyInstapyFollowed:
+            self.automatedFollowedPool = set_automated_followed_pool(self.username,
+                                                                     self.logger,
+                                                                     self.logfolder,
+                                                                     unfollow_after)
 
         try:
             unfollowNumber = unfollow(self.browser,
@@ -1562,7 +1581,13 @@ class InstaPy:
 
         return self
 
-    def like_by_feed(self,
+    def like_by_feed(self, **kwargs):
+        """Like the users feed"""
+        for i in self.like_by_feed_generator(**kwargs):
+            pass
+        return self
+
+    def like_by_feed_generator(self,
                      amount=50,
                      randomize=False,
                      unfollow=False,
@@ -1570,7 +1595,7 @@ class InstaPy:
         """Like the users feed"""
 
         if self.aborting:
-            return self
+            return
 
         liked_img = 0
         already_liked = 0
@@ -1591,7 +1616,7 @@ class InstaPy:
             except NoSuchElementException:
                 self.logger.warning('Too few images, aborting')
                 self.aborting = True
-                return self
+                return
 
             num_of_search += 1
 
@@ -1604,7 +1629,8 @@ class InstaPy:
                 else:
                     if link in history:
                         self.logger.info('This link has already '
-                                         'been visited:\n', link, '\n')
+                                         'been visited: {}'
+                                         .format(link))
                     else:
                         self.logger.info('New link found...')
                         history.append(link)
@@ -1719,6 +1745,8 @@ class InstaPy:
                                     else:
                                         self.logger.info('--> Not following')
                                         sleep(1)
+
+                                    yield self
                                 else:
                                     already_liked += 1
                             else:
@@ -1743,7 +1771,7 @@ class InstaPy:
         self.inap_img += inap_img
         self.commented += commented
 
-        return self
+        return
 
     def set_dont_unfollow_active_users(self, enabled=False, posts=4):
         """Prevents unfollow followers who have liked one of
@@ -1785,8 +1813,11 @@ class InstaPy:
     def end(self):
         """Closes the current session"""
         dump_follow_restriction(self.follow_restrict, self.logfolder)
-        self.browser.delete_all_cookies()
-        self.browser.quit()
+        try:
+            self.browser.delete_all_cookies()
+            self.browser.quit()
+        except WebDriverException as exc:
+            self.logger.warning('Could not locate Chrome: {}'.format(exc))
 
         if self.nogui:
             self.display.stop()

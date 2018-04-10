@@ -5,25 +5,28 @@ from instapy import InstaPy
 import json
 
 def insta_bot(body):
-    try:
-        data = json.loads((body).decode("utf-8"))
-        insta_username = data['insta_user']
-        insta_password = data['insta_pass']
-        session = InstaPy(username=insta_username,
-                    password=insta_password,
-                    headless_browser=True,
-                    multi_logs=True)
+    data = json.loads((body).decode("utf-8"))
+    insta_username = data['insta_user']
+    insta_password = data['insta_pass']
+    session = InstaPy(username=insta_username,
+                password=insta_password,
+                headless_browser=True,
+                multi_logs=True)
 
-        if (data['service_on']):
+    try:
+        if (data['service_on'] == True):
+            print('Login...')
             session.login()
 
             session.set_upper_follower_count(limit=999999)
 
             # actions
-            if (data['tag_type']):
+            if (data['tag_type'] == True):
+                print('following by tag...')
                 session.follow_by_tags(data['tag_list'], amount=1)
 
-            if (data['profile_type']):
+            if (data['profile_type'] == True):
+                print('following by profile...')
                 session.follow_user_followers(data['profile_list'], amount=1, randomize=True, sleep_delay=60)
 
     finally:
