@@ -44,10 +44,8 @@ def insta_bot(body):
         session.end()
 
 
-rabbit_host = '0.0.0.0'
-if os.environ.get('RABBIT_URI'):
-    rabbit_host = os.environ.get('RABBIT_URI')
-connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbit_host))
+# connection = pika.BlockingConnection(pika.ConnectionParameters(host='0.0.0.0'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq-insta"))
 channel = connection.channel()
 
 channel.queue_declare(queue='dm_queue', durable=True)

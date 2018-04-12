@@ -19,7 +19,7 @@ def insta_bot(body):
             print('Login...')
             session.login()
 
-            session.set_upper_follower_count(limit=999999)
+            session.set_upper_follower_count(limit=99999999999)
 
             # actions
             if (data['tag_type'] == True):
@@ -34,10 +34,8 @@ def insta_bot(body):
         # end the bot session
         session.end()
 
-rabbit_host = '0.0.0.0'
-if os.environ.get('RABBIT_URI'):
-    rabbit_host = os.environ.get('RABBIT_URI')
-connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbit_host))
+# connection = pika.BlockingConnection(pika.ConnectionParameters(host='0.0.0.0'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq-insta"))
 channel = connection.channel()
 
 channel.queue_declare(queue='task_queue', durable=True)
