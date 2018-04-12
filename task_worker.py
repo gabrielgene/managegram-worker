@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 import pika
+import os
 from instapy import InstaPy
 import json
 
@@ -33,7 +34,10 @@ def insta_bot(body):
         # end the bot session
         session.end()
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='0.0.0.0'))
+rabbit_host = '0.0.0.0'
+if os.environ.get('RABBIT_URI'):
+    rabbit_host = os.environ.get('RABBIT_URI')
+connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbit_host))
 channel = connection.channel()
 
 channel.queue_declare(queue='task_queue', durable=True)
