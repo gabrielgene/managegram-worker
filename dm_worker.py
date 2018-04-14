@@ -45,7 +45,7 @@ def insta_bot(body):
 
 
 # connection = pika.BlockingConnection(pika.ConnectionParameters(host='0.0.0.0'))
-connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq-insta"))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq-tasks"))
 channel = connection.channel()
 
 channel.queue_declare(queue='dm_queue', durable=True)
