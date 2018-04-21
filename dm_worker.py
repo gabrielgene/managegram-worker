@@ -27,6 +27,8 @@ def insta_bot(body):
         insta_password = data['insta_pass']
         session = InstaPy(username=insta_username,
                     password=insta_password,
+                    proxy_address='179.61.213.118',
+                    proxy_port=60099,
                     headless_browser=True,
                     multi_logs=True)
 
