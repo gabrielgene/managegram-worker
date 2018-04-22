@@ -3,17 +3,22 @@
 import pika
 import os
 from instapy import InstaPy
+from proxy_extension import create_proxy_extension
 import json
 
 def insta_bot(body):
     data = json.loads((body).decode("utf-8"))
     insta_username = data['insta_user']
     insta_password = data['insta_pass']
+    proxy = 'login:password@ip:port'
+    proxy_chrome_extension = create_proxy_extension(proxy)
     session = InstaPy(username=insta_username,
                 password=insta_password,
+                proxy_chrome_extension=proxy_chrome_extension,
                 proxy_address='179.61.213.118',
                 proxy_port=60099,
-                headless_browser=True,
+                nogui=True,
+                headless_browser=False,
                 multi_logs=True)
 
     try:
