@@ -36,8 +36,7 @@ def insta_bot(body):
         session.end()
 
 # connection = pika.BlockingConnection(pika.ConnectionParameters(host='0.0.0.0'))
-host = os.environ.get('RABBIT_URI', 'amqp://guest:guest@rabbitmq:5672')
-connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq-tasks'))
 channel = connection.channel()
 
 channel.queue_declare(queue='task_queue', durable=True)
